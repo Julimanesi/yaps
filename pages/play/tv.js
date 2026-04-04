@@ -83,45 +83,51 @@ const Tv = () => {
       }
     }
   }, [seasonDropDown, episodeDropDown, nextprevbtnclicked])
-  useEffect(() => {
-    console.log(theme)
-    if (localStorage.getItem('userWatched')) {
-      let data = JSON.parse(localStorage.getItem('userWatched'))
-      let tvPresent = -1
-      if (id || tmdb) {
-        for (let i in data.tv) {
-          if (id) {
-            if (data.tv[i][0] === id) {
-              tvPresent = i
+    useEffect(() => {
+        if (localStorage.getItem('userWatched')) {
+            let storageData = JSON.parse(localStorage.getItem('userWatched'));
+            let tvPresentIndex = -1;
+
+            // Buscamos si la serie ya existe en el historial
+            if (id || tmdb) {
+                for (let i = 0; i < storageData.tv.length; i++) {
+                    const currentId = id ? id : tmdb;
+                    if (storageData.tv[i][0] === currentId) {
+                        tvPresentIndex = i;
+                        break; // Detenemos el bucle al encontrarlo
+                    }
+                }
             }
-          } else {
-            if (data.tv[i][0] === tmdb) {
-              tvPresent = i
+
+            if (tvPresentIndex !== -1) {
+                // USAMOS tvPresentIndex, no 'i'
+                setTvDetails({
+                    season: storageData.tv[tvPresentIndex][1],
+                    episode: storageData.tv[tvPresentIndex][2]
+                });
+            } else {
+                // Si la serie no existe, reseteamos a Temporada 1, Episodio 1
+                setTvDetails({ season: 1, episode: 1 });
+
+                if (id || tmdb) {
+                    storageData.tv.push([id ? id : tmdb, 1, 1]);
+                    localStorage.setItem('userWatched', JSON.stringify(storageData));
+                }
             }
-          }
-        }
-      }
-      if (id || tmdb)
-        if (tvPresent !== -1) {
-          setTvDetails({ season: data.tv[i][1], episode: data.tv[i][2] })
         } else {
-          if (id || tmdb) {
-            if (id) data.tv.push([id, tvDetails.season, tvDetails.episode])
-            else data.tv.push([tmdb, tvDetails.season, tvDetails.episode])
-            localStorage.setItem('userWatched', JSON.stringify(data))
-          }
+            // Si no existe el localStorage, lo inicializamos
+            if (id || tmdb) {
+                localStorage.setItem(
+                    'userWatched',
+                    JSON.stringify({
+                        movies: [],
+                        tv: [[id ? id : tmdb, 1, 1]],
+                    })
+                );
+                setTvDetails({ season: 1, episode: 1 });
+            }
         }
-    } else {
-      if (id || tmdb)
-        localStorage.setItem(
-          'userWatched',
-          JSON.stringify({
-            movies: [],
-            tv: [[id ? id : tmdb, tvDetails.season, tvDetails.episode]],
-          })
-        )
-    }
-  }, [id, tmdb])
+    }, [id, tmdb]); // Este efecto corre cada vez que cambias de serie
   useEffect(() => {
     if (data !== undefined) {
       if (localStorage.getItem('userWatched')) {
