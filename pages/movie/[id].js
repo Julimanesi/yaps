@@ -1,6 +1,6 @@
 import Head from 'next/head'
 import { useRouter } from 'next/router'
-import {  useState } from 'react'
+import { useState } from 'react'
 import useSWR from 'swr'
 import FilmCasts from '../../components/FilmCasts'
 import FilmGenres from '../../components/FilmGenres'
@@ -22,16 +22,18 @@ import Heading from '../../components/Heading'
 export default function Movie() {
   const router = useRouter()
   const { id } = router?.query
-  const { data: movie, error: movieError } = useSWR(`/api/movie/${id}`, fetcher)
-  const[isTorrent,setisTorrent]=useState(false)
-const handleClose =()=>{
-  setisTorrent(true)
-}
-  if (typeof (window) !== undefined) {
+  // Solo ejecutar la petición cuando id esté disponible
+  const { data: movie, error: movieError } = useSWR(id ? `/api/movie/${id}` : null, fetcher)
+  const [isTorrent, setisTorrent] = useState(false)
+  const handleClose = () => {
+    setisTorrent(true)
+  }
+
+  if (typeof window !== 'undefined') {
     console?.log("movie", movie)
   }
-  if (movieError) return <div>{movieError}</div>
-  if (!movie) return <div>{movieError}</div>
+  if (movieError) return <div>{movieError?.toString()}</div>
+  // NO devolver aquí cuando movie está pendiente: dejar que el render muestre <Loading />
 
   const opts = {
     height: "500px",
@@ -45,7 +47,6 @@ const handleClose =()=>{
 
   return (
     <>
-   
       <Head>
         <title>{movie?.detail?.title} | YAPS</title>
       </Head>
@@ -53,10 +54,10 @@ const handleClose =()=>{
         placeholder='Search for movies'
         searchPath={pathToSearchMovie}
       />
-     
+
       {movie ? (
         <div>
-          {isTorrent?<TorrentList setisTorrent={setisTorrent} runtime={movie?.imdb?.imdb?.runtime} torrent_list={movie?.imdb?.trb_posts}/>:null}
+          {isTorrent ? <TorrentList setisTorrent={setisTorrent} runtime={movie?.imdb?.imdb?.runtime} torrent_list={movie?.imdb?.trb_posts} /> : null}
           <section className='flex flex-col sm:mx-8 md:mx-0 md:flex-row md:items-start lg:justify-center'>
             <FilmImage
               src={movie?.detail?.poster_path}
@@ -72,7 +73,8 @@ const handleClose =()=>{
                 media_type='movie'
                 language={renderLanguage(movie?.detail?.spoken_languages || [])}
                 length={renderLength(movie?.detail?.runtime)}
-                status={renderStatus(movie?.detailstatus)}
+                // arreglado typo: antes era movie?.detailstatus
+                status={renderStatus(movie?.detail?.status)}
                 year={renderYear(movie?.detail?.release_date)}
               />
               <FilmGenres genres={movie?.detail?.genres || []} />
@@ -87,32 +89,31 @@ const handleClose =()=>{
 
           </section>
           {movie?.imdb?.imdb?.video_list[0]?.key ? <div className='text-gray-300'>
-           
             <YouTube videoId={movie?.imdb?.imdb?.video_list[0]?.key} style={{ borderRadius: "1px" }}
               opts={opts} />
           </div>
             : null}
           <br />
-       {movie?.credits?.cast?   <FilmCasts casts={movie?.credits?.cast} />:null}
+          {movie?.credits?.cast ? <FilmCasts casts={movie?.credits?.cast} /> : null}
 
-       <section
-          className='w-full overflow-hidden md:mb-10 lg:overflow-visible'>
-          <Heading
-            title={"You may like also"}
-            isHomePage={true}
-            isTrending={true}
-            media_type={false}
-          />
           <section
-            className={
-             'h-scroll relative flex gap-x-4 overflow-x-scroll  sm:gap-x-10 2xs:mt-2'   }>
-            {renderResults(
-              sliceArray(movie?.detail?.recommendations?.results || [], movie?.detail?.recommendations?.results.length),
-              CardNormal,
-              "movie"
-            )}
+            className='w-full overflow-hidden md:mb-10 lg:overflow-visible'>
+            <Heading
+              title={"You may like also"}
+              isHomePage={true}
+              isTrending={true}
+              media_type={false}
+            />
+            <section
+              className={
+                'h-scroll relative flex gap-x-4 overflow-x-scroll  sm:gap-x-10 2xs:mt-2'}>
+              {renderResults(
+                sliceArray(movie?.detail?.recommendations?.results || [], movie?.detail?.recommendations?.results.length),
+                CardNormal,
+                "movie"
+              )}
+            </section>
           </section>
-        </section>
         </div>
       ) : (
         <Loading />
